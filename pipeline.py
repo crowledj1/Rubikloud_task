@@ -8,7 +8,7 @@ import os
 import numpy as np
 import scipy as sp
 from keras import utils
-import io
+import io,math
 
 
 #class ExtractorDataParser:
@@ -42,12 +42,11 @@ class CleanDataTask(luigi.Task):
     output_data = luigi.Parameter(default=tweet_data_dict)
 
     # TODO...
-
     # Load the file contents into memeory
     with open(os.getcwd() + '/' + 'airline_tweets.csv', 'rU', encoding="ISO-8859-1") as datafile, open(os.getcwd() + '/' + 'clean_data.csv', 'w', encoding="ISO-8859-1") as write_file:
         csvreader = csv.reader(datafile)
         csvwriter = csv.writer(write_file)
-        #csvreader.next(inf)
+
         counter=0
         num_cols=0
         for record in csvreader:              
@@ -56,17 +55,10 @@ class CleanDataTask(luigi.Task):
                 num_cols=len(record)
                 continue
             counter+=1
-            #if record[0][0] == '#':                                   
-                #self.process_comment_record(record)
-                #continue    
-            #print(record[15][:])    
-           
+
             if record[15][:] == '' or record[15][:] == '[0.0, 0.0]':
                 pass
             else:
-                
-                #record[entry]=record[entry].strip(',')
-                #tweet_data_dict[record[0][:]]=record
                 csvwriter.writerow(record)
                 
         wait=-1                      
@@ -90,16 +82,16 @@ class TrainingDataTask(luigi.Task):
     output_file = luigi.Parameter(default='features.csv')
     
     city_data_dict = collections.defaultdict(list)
+    uniq_city_data_dict = collections.defaultdict(list)
         
 
     def requires(self):
         return self.CleanDataTask  
 
     # TODO...
-    
     def euclid(coords_1,coords_2):
         
-        dist=math.sqrt((math.abs(coords_2[1]-coords_1[1]))^2 + (math.abs(coords_2[1]-coords_1[1]))^2)                
+        dist=math.sqrt(math.pow(math.fabs(coords_2[0]-coords_1[0]),2) + math.pow(math.fabs(coords_2[1]-coords_1[1]),2))                
         return dist
     
     #io.open("to-filter.txt","r", encoding="utf-8") as f:
@@ -121,6 +113,7 @@ class TrainingDataTask(luigi.Task):
                 pass
             else:
                 city_data_dict[record[0][:]]=record[1:]
+                uniq_city_data_dict[record[1][:]]=record[1:]
 
         wait=-1  
         
@@ -130,6 +123,8 @@ class TrainingDataTask(luigi.Task):
         csvreader = csv.reader(file)
         #csvreader.next(inf)
         
+        closest_city=[]
+        uniq_city_coords=np.zeros((len(uniq_city_data_dict),2)) 
         for stuff in csvreader:   
             if not stuff:
                 continue
@@ -142,17 +137,40 @@ class TrainingDataTask(luigi.Task):
                 sentiments.append(2)
                 
             min_dist=float("inf")  
-            #coords_b.append()
-            #stuff=-1
-            #for cities in city_data_dict.items():
-                #coors_a=cities[15]
-                #if ( euclid() )
+            runing_coords_=[]
+            runing_coords_.append(float(stuff[15].split(',')[0][1:]))
+            runing_coords_.append(float(stuff[15].split(',')[-1][:-1]))            
+            
+            all_coord_pairs=[]
+            for keys in uniq_city_data_dict.keys():
+                                                                
+                all_coord_pairs.append(float(uniq_city_data_dict[keys][3]))
+                all_coord_pairs.append(float(uniq_city_data_dict[keys][4]))
+                
+                distance=euclid(runing_coords_,all_coord_pairs)
+                all_coord_pairs=[]
+                if distance < min_dist:
+                    min_dist=distance
+                    min_city_key=keys
+                    
+            closest_city.append(min_city_key)      
 
     X=np.zeros((len(city_data_dict)))    
     citys=[]
     for cities in city_data_dict.items():
 
         citys.append(cities[1])
+        
+    
+    common_labels=[]
+    for val in a:
+        
+        
+        for val2 in b:
+             
+            if val == val2:
+                c.append(val)        
+        
         
     X=utils.to_categorical(citys[1])
         
