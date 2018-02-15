@@ -1,3 +1,5 @@
+
+
 """ Rubikloud take home problem """
 import luigi
 import csv
@@ -9,7 +11,14 @@ import numpy as np
 import scipy as sp
 from keras import utils
 import io,math
+from sklearn.cross_validation import train_test_split
 
+from sklearn import svm
+from sklearn.svm import SVC
+
+import pickle
+
+#clf_doorprob=SVC(probability=True,kernel='sigmoid')
 
 #class ExtractorDataParser:
     #"""Loads a CSV data file and provides functions for working with it"""
@@ -60,15 +69,10 @@ class CleanDataTask(luigi.Task):
                 pass
             else:
                 csvwriter.writerow(record)
-                
-        wait=-1                      
-    bolix=0  
+
     datafile.close()
     write_file.close()
-            
-            
-            
-
+    
 
 class TrainingDataTask(luigi.Task):
     """ Extracts features/outcome variable in preparation for training a model.
@@ -104,18 +108,12 @@ class TrainingDataTask(luigi.Task):
                 counter+=1
                 continue
             counter+=1
-            #if record[0][0] == '#':                                   
-                    #self.process_comment_record(record)
-                    #continue    
-            #print(record[1][:])    
 
             if record[1][:] == '' :
                 pass
             else:
                 city_data_dict[record[0][:]]=record[1:]
                 uniq_city_data_dict[record[1][:]]=record[1:]
-
-        wait=-1  
         
     sentiments=[]   
     with io.open(os.getcwd() + '/' + 'clean_data.csv', 'rU', encoding="ISO-8859-1") as file:
@@ -135,6 +133,8 @@ class TrainingDataTask(luigi.Task):
                 sentiments.append(1)
             else:
                 sentiments.append(2)
+            
+            y=sentiments    
                 
             min_dist=float("inf")  
             runing_coords_=[]
@@ -155,30 +155,47 @@ class TrainingDataTask(luigi.Task):
                     
             closest_city.append(min_city_key)      
 
-    X=np.zeros((len(city_data_dict)))    
-    citys=[]
-    for cities in city_data_dict.items():
-
-        citys.append(cities[1])
-        
+    #X=np.zeros((len(city_data_dict)))    
+    #citys=[]
+    #for cities in city_data_dict.items():
+        #citys.append(cities[1])  
     
-    common_labels=[]
-    for val in a:
-        
-        
-        for val2 in b:
+    #common_labels=[]
+    cpy_closest_citiesa=closest_city.copy()
+    cpy_closest_citiesb=closest_city.copy()
+    comonlbls=np.zeros(len(closest_city))
+    
+    # group same cities under common integer values-= toward classifiction -> one hot encoding right after loop:
+    for indx,val in enumerate(cpy_closest_citiesa):  
+        if isinstance(val, int):
+            continue
+        for indx2,val2 in enumerate(cpy_closest_citiesb):
              
             if val == val2:
-                c.append(val)        
-        
-        
-    X=utils.to_categorical(citys[1])
-        
-            
-    bla=0
+                comonlbls[indx2]=indx    
+                cpy_closest_citiesa[indx2]=indx
+                #cpy_closest_cities2.pop(indx2)
+                            
+    X=utils.to_categorical(comonlbls)
     
+    #X=np.transpose(X)
     
+    indx_1=0
+    with  open(os.getcwd() + '/' + 'features.csv', 'w', encoding="ISO-8859-1") as write_file:
+        for rows in range(X.shape[0]):
+        
+            np.append(X[rows],[y[i]],axis=0)
+            indx_1+=1
 
+            #csvreader = csv.reader(datafile)
+            csvwriter = csv.writer(write_file)
+    
+            csvwriter.writerow(X[rows])
+    
+        write_file.close()    
+    
+        
+    
 
 
 class TrainModelTask(luigi.Task):
@@ -191,6 +208,26 @@ class TrainModelTask(luigi.Task):
     output_file = luigi.Parameter(default='model.pkl')
 
     # TODO...
+    
+    #split the datset :    
+    
+    
+    # fit SVM model:
+    clf_door.fit(X, y)
+    #clf_doorprob.fit(Xtrain, ytrain)    
+    
+ 
+    # open the file for writing
+    fileObject = open(output_file,'wb') 
+    
+    # this writes the object a to the
+    # file named 'testfile'
+    pickle.dump(a,fileObject)   
+    
+    # here we close the fileObject
+    fileObject.close()    
+    
+    
 
 
 class ScoreTask(luigi.Task):
