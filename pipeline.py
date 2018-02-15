@@ -184,13 +184,13 @@ class TrainingDataTask(luigi.Task):
     with  open(os.getcwd() + '/' + 'features.csv', 'w', encoding="ISO-8859-1") as write_file:
         for rows in range(X.shape[0]):
         
-            np.append(X[rows],[y[i]],axis=0)
+            data_n_label=np.append(X[rows],[y[i]],axis=0)
             indx_1+=1
 
             #csvreader = csv.reader(datafile)
             csvwriter = csv.writer(write_file)
     
-            csvwriter.writerow(X[rows])
+            csvwriter.writerow(data_n_label)
     
         write_file.close()    
     
@@ -210,6 +210,28 @@ class TrainModelTask(luigi.Task):
     # TODO...
     
     #split the datset :    
+    
+    
+    with io.open(os.getcwd() + '/' + 'features.csv', 'rU', encoding="ISO-8859-1") as file:
+
+        csvreader = csv.reader(file)
+        #csvreader.next(inf)
+
+        Y=np.zeros((855))
+        features=np.zeros((855,852)) 
+        i=0
+        for rows in csvreader:   
+            j=0
+            for data in rows[:-2]:
+                features[i][j]=float(data)
+                j+=1
+            if(j >= 854):
+                break
+            Y[j]=float(rows[-1])    
+            i+=1
+            if(i == 854):
+                break            
+            
     
     
     # fit SVM model:
